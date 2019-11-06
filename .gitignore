@@ -113,3 +113,10 @@ hs_err_pid*
 
 # Ignore Gradle build output directory
 build
+.settings/
+
+.project
+
+.classpath
+
+.vscode/
