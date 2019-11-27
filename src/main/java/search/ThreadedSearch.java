@@ -1,27 +1,27 @@
 package search;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class ThreadedSearch<T> implements Searcher<T>, Runnable {
+import com.google.common.collect.Lists;
+
+public class ThreadedSearch<T> implements Searcher<T> {
 
     private int numThreads;
-    private T target;
-    private List<T> list;
-    private int begin;
-    private int end;
-    private Answer answer;
+
 
     public ThreadedSearch(int numThreads) {
         this.numThreads = numThreads;
     }
 
-    private ThreadedSearch(T target, List<T> list, int begin, int end, Answer answer) {
-        this.target = target;
-        this.list = list;
-        this.begin = begin;
-        this.end = end;
-        this.answer = answer;
-    }
 
     /**
      * Searches `list` in parallel using `numThreads` threads.
@@ -29,6 +29,40 @@ public class ThreadedSearch<T> implements Searcher<T>, Runnable {
      * You can assume that the list size is divisible by `numThreads`
      */
     public boolean search(T target, List<T> list) throws InterruptedException {
+
+        int sublistSize = list.size() / numThreads;
+
+        List<List<T>> subLists = Lists.partition(list, sublistSize);
+
+        Boolean result = false;
+
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+
+        CompletionService<Boolean> ecs = new ExecutorCompletionService<Boolean>(executor);
+        List<Future<Boolean>> futures = new ArrayList<Future<Boolean>>(numThreads);
+        try {
+            for (List<T> l : subLists)
+                futures.add(ecs.submit(() -> {
+                    LinearSearch<T> ls = new LinearSearch<>();
+                    return ls.search(target, l);
+                }));
+            for (int i = 0; i < numThreads; ++i) {
+                try {
+                    Boolean r = ecs.take().get();
+                    if (r == true) {
+                        result = r;
+                        break;
+                    }
+                } catch (ExecutionException ignore) {}
+            }
+        }
+        finally {
+            for (Future<Boolean> f : futures)
+                f.cancel(true);
+        }
+   
+        executor.shutdownNow();
+        return result;
         /*
          * First construct an instance of the `Answer` inner class. This will
          * be how the threads you're about to create will "communicate". They
@@ -49,36 +83,10 @@ public class ThreadedSearch<T> implements Searcher<T>, Runnable {
          * threads, wait for them to all terminate, and then return the answer
          * in the shared `Answer` instance.
          */
-        return false;
-    }
 
-    public void run() {
-        // Delete this `throw` when you actually implement this method.
-        throw new UnsupportedOperationException();
-    }
+        // One line solution:
+        //return list.stream().parallel().anyMatch(i -> i.equals(target));
 
-    private class Answer {
-        private boolean answer = false;
-
-        // In a more general setting you would typically want to synchronize
-        // this method as well. Because the answer is just a boolean that only
-        // goes from initial initial value (`false`) to `true` (and not back
-        // again), we can safely not synchronize this, and doing so substantially
-        // speeds up the lookup if we add calls to `getAnswer()` to every step in
-        // our threaded loops.
-        public boolean getAnswer() {
-            return answer;
-        }
-
-        // This has to be synchronized to ensure that no two threads modify
-        // this at the same time, possibly causing race conditions.
-        // Actually, that's not really true here, because we're just overwriting
-        // the old value of answer with the new one, and no one will actually
-        // call with any value other than `true`. In general, though, you do
-        // need to synchronize update methods like this to avoid race conditions.
-        public synchronized void setAnswer(boolean newAnswer) {
-            answer = newAnswer;
-        }
     }
 
 }

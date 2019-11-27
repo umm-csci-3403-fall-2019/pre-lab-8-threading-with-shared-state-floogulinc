@@ -23,12 +23,15 @@ public class Main {
         System.out.println(searchArray(numbers.get(3200), numbers));
         System.out.println(searchArray(numbers.get(7400), numbers));
         System.out.println(searchArray(numbers.get(9876), numbers));
+        System.out.println(searchArray(numbers.get(98646376), numbers));
+        System.out.println(searchArray(numbers.get(646376), numbers));
+        System.out.println(searchArray(numbers.get(38635376), numbers));
         Instant endTime = Instant.now();
         Duration totalTime = Duration.between(startTime, endTime);
         System.out.println("Total time was " + (totalTime.getNano() / 1000000) + " milliseconds");
 
         startTime = Instant.now();
-        System.out.println(searchArray(2000000, numbers));
+        System.out.println(searchArray(200000000, numbers));
         System.out.println(searchArray(-45, numbers));
         endTime = Instant.now();
         totalTime = Duration.between(startTime, endTime);
@@ -38,7 +41,11 @@ public class Main {
     private static boolean searchArray(int target, ArrayList<Integer> list) throws InterruptedException {
         // You can replace ThreadedSearch with LinearSearch to see this work with
         // the given linear search code.
-        Searcher<Integer> searcher = new LinearSearch<>();
+        
+        Searcher<Integer> searcher = new ThreadedSearch<>(Runtime.getRuntime().availableProcessors() * 2);
+
+        //Searcher<Integer> searcher = new LinearSearch<>();
+
 
         // This specifies 4 threads for the tests. It would be a good idea to play
         // with this and see how that changes things. Keep in mind that your number
